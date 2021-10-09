@@ -279,10 +279,10 @@ def main():
     st.title("中央競馬予想App")
     st.markdown("#### 競争馬が3着以内に入る確率を学習済みモデルで求めます")
     #r.data_c.head()
-    target_rid = st.sidebar.text_input(
+    target_rid = st.text_input(
         label="予想したいレースのIDを入力(URLがhttps://race.netkeiba.com/race/result.html?race_id=202106040711の場合は202106040711)")
-    target_date = st.sidebar.text_input(label="予想したいレースの開催日を入力(ex:2021/01/01)")
-    flag = st.sidebar.checkbox(label = "馬体重を予想に使わない",value = False)
+    target_date = st.text_input(label="予想したいレースの開催日を入力(ex:2021/01/01)")
+    flag = st.checkbox(label = "馬体重を予想に使わない",value = False)
     #学習済みモデルの読み込み
     with open("lgb_model.pickle", "rb") as f:
         lgb_clf = pickle.load(f)
@@ -290,7 +290,7 @@ def main():
         with open("lgb_model_noweigh.pickle", "rb") as f:
             lgb_clf = pickle.load(f)
     
-    flag_st = st.sidebar.checkbox(label = "予想を開始",value = False)
+    flag_st = st.checkbox(label = "予想を開始",value = False)
 
     if not flag_st:
         st.markdown('''
