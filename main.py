@@ -149,8 +149,11 @@ class ShutubaTable(DataProcessor):
             df["体重"] = df["馬体重(増減)"].str.split("(", expand=True)[0].astype(int)
             df["体重変化"] = (
                 df["馬体重(増減)"].str.split(
-                    "(", expand=True)[1].str[:-1].astype(int)
+                    "(", expand=True)[1].str[:-1]#.astype(int)
             )
+            df["体重変化"] = pd.to_numeric(df["体重変化"], errors='coerce')
+            df.fillna(0, inplace=True)
+            df["体重変化"] = df["体重変化"].astype(int)
 
         df["date"] = pd.to_datetime(df["date"])
         df["枠"] = df["枠"].astype(int)
