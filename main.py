@@ -88,7 +88,7 @@ class ShutubaTable(DataProcessor):
         for race_id in race_id_list:
             url = "https://race.netkeiba.com/race/shutuba.html?race_id=" + race_id
             df = pd.read_html(url)[0]
-            # マルチインデックスを解除　reset_indexで指定した階層のインデックスを解除して列にもってこれてドロップもできる
+            # マルチインデックスを解除 reset_indexで指定した階層のインデックスを解除して列にもってこれてドロップもできる
             df = df.T.reset_index(level=0, drop=True).T
             html = requests.get(url)
             html.encoding = "EUC-JP"
@@ -135,7 +135,7 @@ class ShutubaTable(DataProcessor):
             time.sleep(1)
         return cls(data)
 
-    def preprocessing(self, flag=False):  # 馬体重を除く
+    def preprocessing(self, flag=False,flag_w=False,flag_g=False,w="晴",ground="良"):  # 馬体重を除く
         df = self.data.copy()
         df["性"] = df["性齢"].map(lambda x: str(x)[0])
         df["年齢"] = df["性齢"].map(lambda x: str(x)[1:]).astype(int)
@@ -159,7 +159,15 @@ class ShutubaTable(DataProcessor):
         df["枠"] = df["枠"].astype(int)
         df["馬番"] = df["馬番"].astype(int)
         df["斤量"] = df["斤量"].astype(int)
-        df_list = [
+        df_list = []
+        if not flag:
+            df_list.append("体重")
+            df_list.append("体重変化")
+        if flag_w:
+            df["weather"] = w
+        if flag_g:
+            df["ground_state"] = ground
+        df_list += [
             "枠",
             "馬番",
             "斤量",
@@ -173,9 +181,6 @@ class ShutubaTable(DataProcessor):
             "性",
             "年齢",
         ]
-        if not flag:
-            df_list.append("体重")
-            df_list.append("体重変化")
         # 不要な列を削除
         df = df[df_list]
         self.data_p = df.rename(columns={"枠": "枠番"})
@@ -270,12 +275,13 @@ class HorseResults:  # 着順と賞金の平均を扱う
         return merged_df
 
 
-def predict_proba(model, X):
+def predict_proba(model, X, std):
     proba = pd.Series(model.predict_proba(X)[:, 1], index=X.index)
-    # def standard_scaler(x): 
-    #     return (x - x.mean()) / x.std()
-    # proba = proba.groupby(level=0).transform(standard_scaler)
-    # proba = (proba - proba.min()) / (proba.max() - proba.min())
+    if std:
+        def standard_scaler(x): 
+            return (x - x.mean()) / x.std()
+        proba = proba.groupby(level=0).transform(standard_scaler)
+        proba = (proba - proba.min()) / (proba.max() - proba.min())
     return proba
 
 def main():
@@ -292,7 +298,12 @@ def main():
     if flag:
         with open("lgb_model_noweigh.pickle", "rb") as f:
             lgb_clf = pickle.load(f)
-    
+    w = st.selectbox("天気を選択", ["曇", "晴", "雨", "小雨", "小雪", "雪"])
+    flag_w = st.checkbox(label="上記の天気を設定する", value=False)
+    ground = st.selectbox("馬場状態を選択", ["良", "稍重", "重", "稍"])
+    flag_g = st.checkbox(label="上記の馬場状態を設定する", value=False)
+
+    std = st.checkbox(label="標準化する",value=False)
     flag_st = st.checkbox(label = "予想を開始",value = False)
 
     if not flag_st:
@@ -308,7 +319,7 @@ def main():
 
     if flag_st and len(target_rid) != 0 and len(target_date) != 0:
         stb = ShutubaTable.scrape([target_rid],target_date)
-        stb.preprocessing(flag)
+        stb.preprocessing(flag,flag_w,flag_g,w,ground)
         with open("hrform.pickle", "rb") as f:
             hr = pickle.load(f)
         stb.merge_horse_results(hr)
@@ -322,7 +333,7 @@ def main():
         with open("le_d.pickle", "rb") as f:
             le_d = pickle.load(f)
         stb.process_categorical(le_h,le_j,le_d)
-        pred = predict_proba(lgb_clf,stb.data_c.drop(["date"], axis=1))
+        pred = predict_proba(lgb_clf,stb.data_c.drop(["date"], axis=1),std)
         pred_table = stb.data_c[["馬番"]].copy()
         pred_table["pred"] = pred
         pred_table=pred_table.sort_values("pred", ascending=False).loc[target_rid]
