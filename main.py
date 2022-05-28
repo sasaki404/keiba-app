@@ -46,7 +46,7 @@ class DataProcessor:
         # classesに存在しないhorse_idをclassesに追加する
         mask_horse = df["horse_id"].isin(le_horse.classes_)
         new_horse_id = df["horse_id"].mask(
-            mask_horse).dropna().unique()  # type:numpy array
+            mask_horse).dropna().unique()  # type，numpy array
         le_horse.classes_ = np.concatenate([le_horse.classes_, new_horse_id])
         df["horse_id"] = le_horse.transform(df["horse_id"])
 
